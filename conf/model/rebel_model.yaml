@@ -1,11 +1,1 @@
-# @package _global_
-
-model_name_or_path: '/home/martinez/rebel/model/Rebel-large'
-config_name: '/home/martinez/rebel/model/Rebel-large'
-tokenizer_name: '/home/martinez/rebel/model/Rebel-large'
-cache_dir: 
-use_fast_tokenizer: True
-
-model_revision: 'main'
-use_auth_token: False
-finetune: False
+{"config_name": "/home/hhamad/FinancialRE/models/rebel/model/Rebel-large", "tokenizer_name": "/home/hhamad/FinancialRE/models/rebel/model/Rebel-large", "cache_dir": null, "use_fast_tokenizer": true, "model_revision": "main", "use_auth_token": false, "finetune": false, "mode": null, "model": null, "dataset": null, "exp": null, "model_name_or_path": "/home/hhamad/FinancialRE/models/rebel/model/Rebel-large"}

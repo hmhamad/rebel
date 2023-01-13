@@ -5,7 +5,7 @@ import pytorch_lightning as pl
 import torch
 import numpy as np
 import pandas as pd
-from score import score, re_score
+from models.rebel.src.score import score, re_score
 from transformers import AutoConfig, AutoModelForSeq2SeqLM, AutoTokenizer
 from transformers.optimization import (
     Adafactor,
@@ -17,10 +17,10 @@ from transformers.optimization import (
     get_linear_schedule_with_warmup,
     get_polynomial_decay_schedule_with_warmup
 )
-from scheduler import get_inverse_square_root_schedule_with_warmup
+from models.rebel.src.scheduler import get_inverse_square_root_schedule_with_warmup
 from datasets import load_dataset, load_metric
 from torch.nn.utils.rnn import pad_sequence
-from utils import BartTripletHead, shift_tokens_left, extract_triplets_typed, extract_triplets
+from models.rebel.src.utils import BartTripletHead, shift_tokens_left, extract_triplets_typed, extract_triplets
 
 arg_to_scheduler = {
     "linear": get_linear_schedule_with_warmup,
@@ -192,6 +192,8 @@ class BasePLModule(pl.LightningModule):
         decoded_labels = self.tokenizer.batch_decode(torch.where(labels != -100, labels, self.config.pad_token_id), skip_special_tokens=False)
         if self.hparams.dataset_name.split('/')[-1] == 'conll04_typed.py':
             return [extract_triplets_typed(rel) for rel in decoded_preds], [extract_triplets_typed(rel) for rel in decoded_labels]
+        elif self.hparams.dataset_name.split('/')[-1] == 'scierc_typed.py':
+            return [extract_triplets_typed(rel, {'<task>':'Task', '<method>':'Method', '<metric>':'Metric', '<material>':'Material', '<other>':'OtherScientificTerm', '<generic>':'Generic'} ) for rel in decoded_preds], [extract_triplets_typed(rel,{'<task>':'Task', '<method>':'Method', '<metric>':'Metric', '<material>':'Material', '<other>':'OtherScientificTerm', '<generic>':'Generic'}) for rel in decoded_labels]
         elif self.hparams.dataset_name.split('/')[-1] == 'nyt_typed.py':
             return [extract_triplets_typed(rel, {'<loc>': 'LOCATION', '<org>': 'ORGANIZATION', '<per>': 'PERSON'}) for rel in decoded_preds], [extract_triplets_typed(rel, {'<loc>': 'LOCATION', '<org>': 'ORGANIZATION', '<per>': 'PERSON'}) for rel in decoded_labels]
         elif self.hparams.dataset_name.split('/')[-1] == 'docred_typed.py':
@@ -383,6 +385,8 @@ class BasePLModule(pl.LightningModule):
         elif not 'tacred' in self.hparams.dataset_name.split('/')[-1]:
             if self.hparams.dataset_name.split('/')[-1] == 'conll04_typed.py':
                 scores, precision, recall, f1 = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], ['killed by', 'residence', 'location', 'headquarters location', 'employer'], "strict")
+            elif self.hparams.dataset_name.split('/')[-1] == 'scierc_typed.py':
+                scores, precision, recall, f1 = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], ['used for', 'feature of', 'hyponym of', 'part of', 'compare', 'evaluate for', 'conjunction'], "strict")
             elif self.hparams.dataset_name.split('/')[-1] == 'ade.py':
                 scores, precision, recall, f1 = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], ['has effect'])
             elif self.hparams.dataset_name.split('/')[-1] == 'nyt_typed.py':
@@ -421,6 +425,8 @@ class BasePLModule(pl.LightningModule):
         elif not 'tacred' in self.hparams.dataset_name.split('/')[-1]:
             if self.hparams.dataset_name.split('/')[-1] == 'conll04_typed.py':
                 scores, precision, recall, f1 = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], ['killed by', 'residence', 'location', 'headquarters location', 'employer'], "strict")
+            if self.hparams.dataset_name.split('/')[-1] == 'scierc_typed.py':
+                scores, precision, recall, f1 = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], ['used for', 'feature of', 'hyponym of', 'part of', 'compare', 'evaluate for', 'conjunction'], "strict")
             elif self.hparams.dataset_name.split('/')[-1] == 'ade.py':
                 scores, precision, recall, f1 = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], ['has effect'])
             elif self.hparams.dataset_name.split('/')[-1] == 'nyt_typed.py':

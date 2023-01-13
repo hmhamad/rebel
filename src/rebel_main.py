@@ -4,15 +4,17 @@ import hydra
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
-from pl_data_modules import BasePLDataModule
-from pl_modules import BasePLModule
+from models.rebel.src.pl_data_modules import BasePLDataModule
+from models.rebel.src.pl_modules import BasePLModule
 from transformers import AutoConfig, AutoModelForSeq2SeqLM, AutoTokenizer
 
 from pytorch_lightning.loggers.neptune import NeptuneLogger
 from pytorch_lightning.loggers.wandb import WandbLogger
+from pytorch_lightning.loggers import TensorBoardLogger
 
 from pytorch_lightning.callbacks import LearningRateMonitor
-from generate_samples import GenerateTextSamplesCallback
+from models.rebel.src.generate_samples import GenerateTextSamplesCallback
+import json
 
 def train(conf: omegaconf.DictConfig) -> None:
     pl.seed_everything(conf.seed)
@@ -37,12 +39,19 @@ def train(conf: omegaconf.DictConfig) -> None:
         **tokenizer_kwargs
     )
 
-    if conf.dataset_name.split('/')[-1] == 'conll04_typed.py':
-        tokenizer.add_tokens(['<peop>', '<org>', '<other>', '<loc>'], special_tokens = True)
-    if conf.dataset_name.split('/')[-1] == 'nyt_typed.py':
-        tokenizer.add_tokens(['<loc>', '<org>', '<per>'], special_tokens = True)
-    if conf.dataset_name.split('/')[-1] == 'docred_typed.py':
-        tokenizer.add_tokens(['<loc>', '<misc>', '<per>', '<num>', '<time>', '<org>'], special_tokens = True)
+    data_types = json.load(open(conf.types_file,'r'))
+    special_tokens_list = []
+    for ent_type in data_types['entities']:
+        special_tokens_list.append('<' + ent_type.lower() + '>')
+    tokenizer.add_tokens(special_tokens_list, special_tokens = True)
+
+
+    # if conf.dataset_name.split('/')[-1] == 'conll04_typed.py':
+    #     tokenizer.add_tokens(['<peop>', '<org>', '<other>', '<loc>'], special_tokens = True)
+    # if conf.dataset_name.split('/')[-1] == 'nyt_typed.py':
+    #     tokenizer.add_tokens(['<loc>', '<org>', '<per>'], special_tokens = True)
+    # if conf.dataset_name.split('/')[-1] == 'docred_typed.py':
+    #     tokenizer.add_tokens(['<loc>', '<misc>', '<per>', '<num>', '<time>', '<org>'], special_tokens = True)
 
     model = AutoModelForSeq2SeqLM.from_pretrained(
         conf.model_name_or_path,
@@ -74,7 +83,7 @@ def train(conf: omegaconf.DictConfig) -> None:
         ModelCheckpoint(
             monitor=conf.monitor_var,
             # monitor=None,
-            dirpath=f'experiments/{conf.model_name}',
+            dirpath=conf.log_path + '/best_model',
             save_top_k=conf.save_top_k,
             verbose=True,
             save_last=True,
@@ -90,11 +99,12 @@ def train(conf: omegaconf.DictConfig) -> None:
         gradient_clip_val=conf.gradient_clip_value,
         val_check_interval=conf.val_check_interval,
         callbacks=callbacks_store,
+        #max_epochs=conf.num_train_epochs,
         max_steps=conf.max_steps,
-        # max_steps=total_steps,
         precision=conf.precision,
         amp_level=conf.amp_level,
-        logger=wandb_logger,
+        #logger=TensorBoardLogger(save_dir=conf.log_path + '/best_model/'),
+        logger = wandb_logger,
         resume_from_checkpoint=conf.checkpoint_path,
         limit_val_batches=conf.val_percent_check
     )
@@ -102,10 +112,12 @@ def train(conf: omegaconf.DictConfig) -> None:
     # module fit
     trainer.fit(pl_module, datamodule=pl_data_module)
 
-@hydra.main(config_path='../conf', config_name='root')
-def main(conf: omegaconf.DictConfig):
+
+def call_rebel(conf):
+    conf = omegaconf.OmegaConf.create(conf.configs)
     train(conf)
 
 
-if __name__ == '__main__':
-    main()
+# @hydra.main(config_path='../conf', config_name='root')
+# def main(conf: omegaconf.DictConfig,mode="", model="",dataset="",exp=""):
+#     train(conf)
