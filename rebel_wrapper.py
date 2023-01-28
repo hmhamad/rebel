@@ -17,61 +17,82 @@ class RebelWrapper(ModelWrapper):
         super().__init__(exp_cfgs)
 
     def train(self, model_path, train_path, valid_path, output_path):
-        # data conf
-        self.exp_cfgs.model_args.add("types_file",self.exp_cfgs.model_args.types_path,overwrite=True)
-        self.exp_cfgs.model_args.add("test_file",self.exp_cfgs.model_args.test_path,overwrite=True)
-        self.exp_cfgs.model_args.add("train_file",train_path,overwrite=True)
-        self.exp_cfgs.model_args.add("validation_file",valid_path,overwrite=True)
-        self.exp_cfgs.model_args.add("log_path",output_path,overwrite=True)
-        # with open(os.path.join(self.exp_cfgs.sim_args.cwd,'models','rebel','conf','data',self.exp_cfgs.sim_args.dataset+'_data.yaml'),'w') as outfile:
-        #     json.dump(self.exp_cfgs.model_args.data.configs, outfile, ensure_ascii=False)
         
-        # model conf
-        self.exp_cfgs.model_args.add("model_name_or_path",model_path,overwrite=True)
-        self.exp_cfgs.model_args.add("config_name",model_path,overwrite=True)
-        self.exp_cfgs.model_args.add("tokenizer_name",model_path,overwrite=True)
-        # with open(os.path.join(self.exp_cfgs.sim_args.cwd,'models','rebel','conf','model','rebel_model.yaml'),'w') as outfile:
-        #     json.dump(self.exp_cfgs.model_args.model.configs, outfile, ensure_ascii=False)
-        
-        # self.exp_cfgs.model_args.train.add("seed",self.exp_cfgs.model_args.seed,overwrite=True) 
-        # # train conf
-        # with open(os.path.join(self.exp_cfgs.sim_args.cwd,'models','rebel','conf','train',self.exp_cfgs.sim_args.dataset+'_train.yaml'),'w') as outfile:
-        #     json.dump(self.exp_cfgs.model_args.train.configs, outfile, ensure_ascii=False)
+        self.exp_cfgs.model_args.edit('do_train',True) 
+        self.exp_cfgs.model_args.edit('do_eval',True) 
+        self.exp_cfgs.model_args.edit('do_predict',False) 
 
-        for data_path in ['train','valid','test']:
-            data = json.load(open(self.exp_cfgs.model_args.configs[f'{data_path}_path']))
+        self.exp_cfgs.model_args.edit("model_path",model_path)
+        self.exp_cfgs.model_args.add("types_file",self.exp_cfgs.model_args.types_path)
+        self.exp_cfgs.model_args.add("train_file",train_path)
+        self.exp_cfgs.model_args.add("validation_file",valid_path)
+        self.exp_cfgs.model_args.add("log_path",output_path)
+
+        self.exp_cfgs.model_args.add("model_name_or_path",self.exp_cfgs.model_args.tokenizer_name)
+
+
+        for dataset_path in [train_path,valid_path]:
+            data = json.load(open(dataset_path))
             for i,sentence in enumerate(data):
                 data[i]['orig_id'] = i
-            with open(self.exp_cfgs.model_args.configs[f'{data_path}_path'],'w') as out_file:
+            with open(dataset_path,'w') as out_file:
                json.dump(data,out_file)
+        
         call_rebel(self.exp_cfgs.model_args)
 
         return True
 
     def eval(self, model_path, dataset_path, output_path, data_label='test', save_embeddings = False,  Temp_rel = 1.0, Temp_ent = 1.0):
 
+        self.exp_cfgs.model_args.edit('do_train',False) 
+        self.exp_cfgs.model_args.edit('do_eval',True) 
+        self.exp_cfgs.model_args.edit('do_predict',False) 
+        self.exp_cfgs.model_args.edit("model_path",model_path)
+
         # data conf
-        self.exp_cfgs.model_args.model.add("test_file",dataset_path)
-        self.exp_cfgs.model_args.model.add("log_path",output_path)
-        with open(os.path.join(self.cwd,'models','rebel','conf','data',self.exp_cfgs.dataset+'_data.yaml')) as outfile:
-            json.dump(self.exp_cfgs.model_args.data, outfile, ensure_ascii=False)
+        self.exp_cfgs.model_args.add("types_file",self.exp_cfgs.model_args.types_path)
+        self.exp_cfgs.model_args.add("test_file",dataset_path)
+        self.exp_cfgs.model_args.add("log_path",output_path)
+        self.exp_cfgs.model_args.add("data_label",data_label)
 
         # model conf
-        self.exp_cfgs.model_args.model.add("model_name_or_path",model_path)
-        self.exp_cfgs.model_args.model.add("config_name",model_path)
-        self.exp_cfgs.model_args.model.add("tokenizer_name",model_path)
-        with open(os.path.join(self.cwd,'models','rebel','conf','model','rebel_model.yaml')) as outfile:
-            json.dump(self.exp_cfgs.model_args.model, outfile, ensure_ascii=False)
+        self.exp_cfgs.model_args.add("model_name_or_path",self.exp_cfgs.model_args.tokenizer_name)
 
-        self.exp_cfgs.model_args.train.add("seed",self.exp_cfgs.model_args.seed) 
-        # train conf
-        with open(os.path.join(self.cwd,'models','rebel','conf','train',self.exp_cfgs.dataset+'_train.yaml')) as outfile:
-            json.dump(self.exp_cfgs.model_args.train, outfile, ensure_ascii=False)
+        data = json.load(open(dataset_path))
+        for i,sentence in enumerate(data):
+            data[i]['orig_id'] = i
+        with open(dataset_path,'w') as out_file:
+            json.dump(data,out_file)
+        
+        call_rebel(self.exp_cfgs.model_args)
 
-        call_rebel()
+        return True
+
+    def predict(self, model_path, dataset_path, output_path, data_label='predict', save_embeddings = False,  Temp_rel = 1.0, Temp_ent = 1.0):
+
+        self.exp_cfgs.model_args.edit('do_train',False) 
+        self.exp_cfgs.model_args.edit('do_eval',False) 
+        self.exp_cfgs.model_args.edit('do_predict',True) 
+        self.exp_cfgs.model_args.edit("model_path",model_path)
+
+        # data conf
+        self.exp_cfgs.model_args.add("types_file",self.exp_cfgs.model_args.types_path)
+        self.exp_cfgs.model_args.add("test_file",dataset_path)
+        self.exp_cfgs.model_args.add("log_path",output_path)
+        self.exp_cfgs.model_args.add("data_label",data_label)
+
+        # model conf
+        self.exp_cfgs.model_args.add("model_name_or_path",self.exp_cfgs.model_args.tokenizer_name)
+
+        data = json.load(open(dataset_path))
+        for i,sentence in enumerate(data):
+            data[i]['orig_id'] = i
+        with open(dataset_path,'w') as out_file:
+            json.dump(data,out_file)
+        
+        call_rebel(self.exp_cfgs.model_args)
+
+        return True
 
     def calibrate():
-        pass
-
-    def predict():
         pass

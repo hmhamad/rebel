@@ -73,4 +73,4 @@ class GenerateTextSamplesCallback(Callback):  # pragma: no cover
             wandb_table.add_data(
                 source.replace('<pad>', ''), translation.replace('<pad>', ''), gold_output.replace('<pad>', '')
             )
-        pl_module.logger.experiment.log({"Triplets": wandb_table})
+        #pl_module.logger.experiment.log({"Triplets": wandb_table})

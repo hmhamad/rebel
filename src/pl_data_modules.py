@@ -64,11 +64,14 @@ class BasePLDataModule(pl.LightningDataModule):
         self.model = model
         if conf.relations_file:
             self.datasets = load_dataset(conf.dataset_name, data_files={'train': conf.train_file, 'dev': conf.validation_file, 'test': conf.test_file, 'relations': conf.relations_file})
-        else:
-            self.datasets = load_dataset(conf.dataset_name, data_files={'train': conf.train_file, 'dev': conf.validation_file, 'test': conf.test_file})
+        elif conf.do_train:
+            self.datasets = load_dataset(conf.dataset_name, data_files={'train': conf.train_file, 'dev': conf.validation_file})
+            self.column_names = self.datasets["train"].column_names
+        elif conf.do_eval or conf.do_predict:
+            self.datasets = load_dataset(conf.dataset_name, data_files={'test': conf.test_file})
+            self.column_names = self.datasets["test"].column_names
         set_caching_enabled(True)
         self.prefix = conf.source_prefix if conf.source_prefix is not None else ""
-        self.column_names = self.datasets["train"].column_names
         # self.source_lang, self.target_lang, self.text_column, self.summary_column = None, None, None, None
         self.text_column = conf.text_column
         self.summary_column = conf.target_column
@@ -83,25 +86,26 @@ class BasePLDataModule(pl.LightningDataModule):
             self.data_collator = DataCollatorForSeq2Seq(self.tokenizer, self.model, label_pad_token_id=label_pad_token_id)
 
     def prepare_data(self, *args, **kwargs):
-        self.train_dataset = self.datasets["train"]
-        if "train" not in self.datasets:
-            raise ValueError("--do_train requires a train dataset")
-        if self.conf.max_train_samples is not None:
-            self.train_dataset = self.train_dataset.select(range(self.conf.max_train_samples))
-        self.train_dataset = self.train_dataset.map(
-            self.preprocess_function,
-            batched=True,
-            num_proc=self.conf.preprocessing_num_workers,
-            remove_columns=self.column_names,
-            load_from_cache_file=not self.conf.overwrite_cache,
-            cache_file_name=self.conf.train_file.replace('.jsonl', '-') + self.conf.dataset_name.split('/')[-1].replace('.py', '.cache'),
-        )
+        if self.conf.do_train:
+            self.train_dataset = self.datasets["train"]
+            if "train" not in self.datasets:
+                raise ValueError("--do_train requires a train dataset")
+            if self.conf.max_train_samples is not None:
+                self.train_dataset = self.train_dataset.select(range(self.conf.max_train_samples))
+            self.train_dataset = self.train_dataset.map(
+                self.preprocess_function,
+                batched=True,
+                num_proc=self.conf.preprocessing_num_workers,
+                remove_columns=self.column_names,
+                load_from_cache_file=not self.conf.overwrite_cache,
+                cache_file_name=self.conf.train_file.replace('.jsonl', '-') + self.conf.dataset_name.split('/')[-1].replace('.py', '.cache'),
+            )
 
         if self.conf.do_eval:
             max_target_length = self.conf.val_max_target_length
-            if "validation" not in self.datasets:
+            if "test" not in self.datasets and "validation" not in self.datasets:
                 raise ValueError("--do_eval requires a validation dataset")
-            self.eval_dataset = self.datasets["validation"]
+            self.eval_dataset = self.datasets["test"] if "test" in self.datasets else self.datasets["validation"]
             if self.conf.max_val_samples is not None:
                 self.eval_dataset = self.eval_dataset.select(range(self.conf.max_val_samples))
             self.eval_dataset = self.eval_dataset.map(
@@ -110,7 +114,7 @@ class BasePLDataModule(pl.LightningDataModule):
                 num_proc=self.conf.preprocessing_num_workers,
                 remove_columns=self.column_names,
                 load_from_cache_file=not self.conf.overwrite_cache,
-                cache_file_name=self.conf.validation_file.replace('.jsonl', '-') + self.conf.dataset_name.split('/')[-1].replace('.py', '.cache'),
+                cache_file_name=self.conf.test_file.replace('.jsonl', '-') + self.conf.dataset_name.split('/')[-1].replace('.py', '.cache') if "test" in self.datasets else self.conf.validation_file.replace('.jsonl', '-') + self.conf.dataset_name.split('/')[-1].replace('.py', '.cache'),
             )
 
         if self.conf.do_predict:
@@ -154,7 +158,7 @@ class BasePLDataModule(pl.LightningDataModule):
 
     def test_dataloader(self, *args, **kwargs) -> Union[DataLoader, List[DataLoader]]:
         return DataLoader(
-            self.test_dataset,
+            self.eval_dataset,
             batch_size=self.conf.eval_batch_size,
             # sampler=train_sampler,
             collate_fn=self.data_collator,

@@ -82,19 +82,31 @@ class CONLL04(datasets.GeneratorBasedBuilder):
 
     def _split_generators(self, dl_manager):
         if self.config.data_files:
-            downloaded_files = {
-                "train": self.config.data_files["train"], # self.config.data_dir + "en_train.jsonl",
-                "dev": self.config.data_files["dev"], #self.config.data_dir + "en_val.jsonl",
-                "test": self.config.data_files["test"], #self.config.data_dir + "en_test.jsonl",
-            }
+            downloaded_files = {}
+            for filename, filepath in self.config.data_files.items():
+                downloaded_files[filename] = filepath
+            # downloaded_files = {
+            #     "train": self.config.data_files["train"], # self.config.data_dir + "en_train.jsonl",
+            #     "dev": self.config.data_files["dev"], #self.config.data_dir + "en_val.jsonl",
+            #     "test": self.config.data_files["test"], #self.config.data_dir + "en_test.jsonl",
+            # }
         else:
             downloaded_files = dl_manager.download_and_extract(_URLS)
 
-        return [
-            datasets.SplitGenerator(name=datasets.Split.TRAIN, gen_kwargs={"filepath": downloaded_files["train"]}),
-            datasets.SplitGenerator(name=datasets.Split.VALIDATION, gen_kwargs={"filepath": downloaded_files["dev"]}),
-            datasets.SplitGenerator(name=datasets.Split.TEST, gen_kwargs={"filepath": downloaded_files["test"]}),
-        ]
+        # return [
+        #     datasets.SplitGenerator(name=datasets.Split.TRAIN, gen_kwargs={"filepath": downloaded_files["train"]}),
+        #     datasets.SplitGenerator(name=datasets.Split.VALIDATION, gen_kwargs={"filepath": downloaded_files["dev"]}),
+        #     datasets.SplitGenerator(name=datasets.Split.TEST, gen_kwargs={"filepath": downloaded_files["test"]}),
+        # ]
+
+        return_items = []
+        if "train" in downloaded_files:
+            return_items.append(datasets.SplitGenerator(name=datasets.Split.TRAIN, gen_kwargs={"filepath": downloaded_files["train"]}))
+        if "dev" in downloaded_files:
+            return_items.append(datasets.SplitGenerator(name=datasets.Split.VALIDATION, gen_kwargs={"filepath": downloaded_files["dev"]}))
+        if "test" in downloaded_files:
+            return_items.append(datasets.SplitGenerator(name=datasets.Split.TEST, gen_kwargs={"filepath": downloaded_files["test"]}))
+        return return_items
 
     def _generate_examples(self, filepath):
         """This function returns the examples in the raw (text) triplet form."""
