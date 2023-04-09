@@ -195,6 +195,11 @@ class BasePLModule(pl.LightningModule):
             return [extract_triplets_typed(rel) for rel in decoded_preds], [extract_triplets_typed(rel) for rel in decoded_labels]
         elif self.hparams.dataset_name.split('/')[-1] == 'scierc_typed.py':
             return [extract_triplets_typed(rel, {'<task>':'Task', '<method>':'Method', '<metric>':'Metric', '<material>':'Material', '<other>':'OtherScientificTerm', '<generic>':'Generic'} ) for rel in decoded_preds], [extract_triplets_typed(rel,{'<task>':'Task', '<method>':'Method', '<metric>':'Metric', '<material>':'Material', '<other>':'OtherScientificTerm', '<generic>':'Generic'}) for rel in decoded_labels]
+        elif self.hparams.dataset_name.split('/')[-1] == 'fire_typed.py':
+            fire_mapping_types = {'Company': '<comp>', 'FinancialEntity': '<finent>', 'Quantity': '<quant>', 'Date': '<date>', 'Money': '<money>', 'Location': '<loc>', 'Action': '<action>', 'GeopoliticalEntity': '<geoent>',
+                                  'Product': '<product>','Designation': '<desig>','Sector': '<sector>','Person': '<per>','BusinessUnit': '<bus>'}
+            fire_mapping_types_flipped = {v: k for k, v in fire_mapping_types.items()}
+            return [extract_triplets_typed(rel, fire_mapping_types_flipped ) for rel in decoded_preds], [extract_triplets_typed(rel,fire_mapping_types_flipped) for rel in decoded_labels]
         elif self.hparams.dataset_name.split('/')[-1] == 'nyt_typed.py':
             return [extract_triplets_typed(rel, {'<loc>': 'LOCATION', '<org>': 'ORGANIZATION', '<per>': 'PERSON'}) for rel in decoded_preds], [extract_triplets_typed(rel, {'<loc>': 'LOCATION', '<org>': 'ORGANIZATION', '<per>': 'PERSON'}) for rel in decoded_labels]
         elif self.hparams.dataset_name.split('/')[-1] == 'docred_typed.py':
@@ -390,6 +395,13 @@ class BasePLModule(pl.LightningModule):
             elif self.hparams.dataset_name.split('/')[-1] == 'scierc_typed.py':
                 scores_boundaries, precision_boundaries, recall_boundaries, f1_boundaries = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], ['used for', 'feature of', 'hyponym of', 'part of', 'compare', 'evaluate for', 'conjunction'], "boundaries")
                 scores_strict, precision_strict, recall_strict, f1_strict = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], ['used for', 'feature of', 'hyponym of', 'part of', 'compare', 'evaluate for', 'conjunction'], "strict")
+            elif self.hparams.dataset_name.split('/')[-1] == 'fire_typed.py':
+                fire_mapping = {'ValueChangeDecreaseby': 'value decreased by', 'Valuein': 'value in date', 'Value': 'value', 'ValueChangeIncreaseby': 'value increased by', 'Locatedin': 'location',
+                           'ActionSell': 'sell', 'Quantity': 'quantity', 'ActionBuy': 'buy', 'Productof': 'product of', 'Employeeof': 'employer',
+                           'Sector': 'sector', 'Subsidiaryof': 'parent', 'Designation': 'designation', 'Actionin': 'action in date', 'Propertyof': 'property of'}
+                fire_mapping_values = list(fire_mapping.values())
+                scores_boundaries, precision_boundaries, recall_boundaries, f1_boundaries = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], fire_mapping_values, "boundaries")
+                scores_strict, precision_strict, recall_strict, f1_strict = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], fire_mapping_values, "strict")
             elif self.hparams.dataset_name.split('/')[-1] == 'ade.py':
                 scores_boundaries, precision_boundaries, recall_boundaries, f1_boundaries = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], ['has effect'],"boundaries")
                 scores_strict, precision_strict, recall_strict, f1_strict = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], ['has effect'], "strict")
@@ -435,9 +447,16 @@ class BasePLModule(pl.LightningModule):
             if self.hparams.dataset_name.split('/')[-1] == 'conll04_typed.py':
                 scores_boundaries, precision_boundaries, recall_boundaries, f1_boundaries = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], ['killed by', 'residence', 'location', 'headquarters location', 'employer'], "boundaries")
                 scores_strict, precision_strict, recall_strict, f1_strict = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], ['killed by', 'residence', 'location', 'headquarters location', 'employer'], "strict")
-            if self.hparams.dataset_name.split('/')[-1] == 'scierc_typed.py':
+            elif self.hparams.dataset_name.split('/')[-1] == 'scierc_typed.py':
                 scores_boundaries, precision_boundaries, recall_boundaries, f1_boundaries = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], ['used for', 'feature of', 'hyponym of', 'part of', 'compare', 'evaluate for', 'conjunction'], "boundaries")
                 scores_strict, precision_strict, recall_strict, f1_strict = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], ['used for', 'feature of', 'hyponym of', 'part of', 'compare', 'evaluate for', 'conjunction'], "strict")
+            elif self.hparams.dataset_name.split('/')[-1] == 'fire_typed.py':
+                fire_mapping = {'ValueChangeDecreaseby': 'value decreased by', 'Valuein': 'value in date', 'Value': 'value', 'ValueChangeIncreaseby': 'value increased by', 'Locatedin': 'location',
+                           'ActionSell': 'sell', 'Quantity': 'quantity', 'ActionBuy': 'buy', 'Productof': 'product of', 'Employeeof': 'employer',
+                           'Sector': 'sector', 'Subsidiaryof': 'parent', 'Designation': 'designation', 'Actionin': 'action in date', 'Propertyof': 'property of'}
+                fire_mapping_values = list(fire_mapping.values())
+                scores_boundaries, precision_boundaries, recall_boundaries, f1_boundaries = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], fire_mapping_values, "boundaries")
+                scores_strict, precision_strict, recall_strict, f1_strict = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], fire_mapping_values, "strict")
             elif self.hparams.dataset_name.split('/')[-1] == 'ade.py':
                 scores_boundaries, precision_boundaries, recall_boundaries, f1_boundaries = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], ['has effect'],"boundaries")
                 scores_strict, precision_strict, recall_strict, f1_strict = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], ['has effect'],"strict")

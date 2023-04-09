@@ -80,6 +80,10 @@ def train(conf: omegaconf.DictConfig) -> None:
         tokenizer.add_tokens(['<peop>', '<org>', '<other>', '<loc>'], special_tokens = True)
     if conf.dataset_name.split('/')[-1] == 'scierc_typed.py':
         tokenizer.add_tokens(['<task>', '<method>', '<metric>', '<material>', '<other>', '<generic>'], special_tokens = True)
+    if conf.dataset_name.split('/')[-1] == 'fire_typed.py':
+        fire_mapping_types = {'Company': '<comp>', 'FinancialEntity': '<finent>', 'Quantity': '<quant>', 'Date': '<date>', 'Money': '<money>', 'Location': '<loc>', 'Action': '<action>', 'GeopoliticalEntity': '<geoent>',
+                             'Product': '<product>','Designation': '<desig>','Sector': '<sector>','Person': '<per>','BusinessUnit': '<bus>'}
+        tokenizer.add_tokens(list(fire_mapping_types.values()), special_tokens = True)
     if conf.dataset_name.split('/')[-1] == 'nyt_typed.py':
         tokenizer.add_tokens(['<loc>', '<org>', '<per>'], special_tokens = True)
     if conf.dataset_name.split('/')[-1] == 'docred_typed.py':
