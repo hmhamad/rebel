@@ -15,12 +15,15 @@ from models.rebel.src.generate_samples import GenerateTextSamplesCallback
 import json
 import os
 import csv
+import optuna
+
 CSV_DELIMETER = ';'
 
 class MyTrainLogger(Callback):
-    def __init__(self,logdir):
+    def __init__(self,logdir, trial=None):
         super().__init__()
         self.logdir = logdir
+        self.trial = trial
         self.F1_path = os.path.join(self.logdir,'F1_epochs.csv')
         with open(self.F1_path, 'a', newline='') as csv_file:
             header_row = ['{:<10}'.format('Epoch'),'{:<30}'.format('NER_Valid_Micro_F1'), '{:<30}'.format('Best_NER_Valid_Micro_F1'), '{:<30}'.format('Rel_Valid_Micro_F1'), '{:<30}'.format('Best_Rel_Valid_Micro_F1'), '{:<30}'.format('Rel+_Valid_Micro_F1'), '{:<30}'.format('Best_Rel+_Valid_Micro_F1')]
@@ -44,6 +47,11 @@ class MyTrainLogger(Callback):
                 row = ['{:<10}'.format(f'{epoch+1}/'+str(int(pl_module.hparams['num_train_epochs']))),'{:<30}'.format(f'{ner_f1:.4f}'), '{:<30}'.format(f'{best_ner_f1:.4f}'), '{:<30}'.format(f'{eval_rel_micro_f1:.4f}'), '{:<30}'.format(f'{best_eval_rel_micro_f1:.4f}'), '{:<30}'.format(f'{eval_rel_plus_micro_f1:.4f}'), '{:<30}'.format(f'{best_eval_rel_plus_micro_f1:.4f}')]
                 writer = csv.writer(csv_file, delimiter=CSV_DELIMETER, quotechar='|', quoting=csv.QUOTE_MINIMAL)
                 writer.writerow(row)
+            if self.trial:
+                self.trial.report(best_eval_rel_plus_micro_f1, epoch)
+                if self.trial.should_prune():
+                    raise optuna.exceptions.TrialPruned()
+            self.best_eval_rel_plus_micro_f1 = best_eval_rel_plus_micro_f1
 
 class MyTestLogger(Callback):
     def __init__(self, logdir, data_label):
@@ -97,7 +105,7 @@ def template_to_standard(dataset_path,output,log_path,data_label):
         json.dump(data_gt,outfile)
 
     
-def train(conf: omegaconf.DictConfig) -> None:
+def train(conf: omegaconf.DictConfig, trial : optuna.trial.Trial = None) -> float:
     pl.seed_everything(conf.seed)
     
     config = AutoConfig.from_pretrained(
@@ -149,7 +157,7 @@ def train(conf: omegaconf.DictConfig) -> None:
 
     callbacks_store = []
     
-    mylogger =  MyTrainLogger(logdir=conf.log_path)
+    mylogger =  MyTrainLogger(logdir=conf.log_path, trial=trial)
     callbacks_store.append(mylogger)
 
 
@@ -195,6 +203,8 @@ def train(conf: omegaconf.DictConfig) -> None:
 
     # module fit
     trainer.fit(pl_module, datamodule=pl_data_module)
+
+    return mylogger.best_eval_rel_plus_micro_f1
 
 def test_or_predict(conf: omegaconf.DictConfig) -> None:
     pl.seed_everything(conf.seed)
@@ -274,11 +284,11 @@ def test_or_predict(conf: omegaconf.DictConfig) -> None:
     dataset_path = conf.test_file
     template_to_standard(dataset_path,trainer.logged_metrics['output'],log_path = conf.log_path, data_label= conf.data_label)
 
-
-def call_rebel(conf):
+def call_rebel(conf, trial : optuna.trial.Trial = None) -> float:
     conf = omegaconf.OmegaConf.create(conf.configs)
     if conf.do_train:
-        train(conf)
+        best_eval_micro_f1 = train(conf, trial=trial)
+        return best_eval_micro_f1
     elif conf.do_eval or conf.do_predict:
         test_or_predict(conf)
     else:

@@ -5,7 +5,7 @@ from models.wrapper import ModelWrapper
 import os
 import json
 from models.rebel.src.rebel_main import call_rebel
-import shutil
+import optuna
 
 TRAIN_ARGS_LIST = ["seed","device_id","epochs","rel_filter_threshold","max_pairs","max_span_size","tokenizer_path","lr","save_model","train_batch_size","eval_batch_size","lr_warmup","weight_decay","max_grad_norm","neg_relation_count","neg_entity_count","size_embedding","prop_drop","save_optimizer"]
 EVAL_ARGS_LIST = ["seed","device_id","rel_filter_threshold","max_pairs","max_span_size","tokenizer_path","eval_batch_size","size_embedding","prop_drop"]
@@ -16,8 +16,17 @@ class RebelWrapper(ModelWrapper):
     def __init__(self, exp_cfgs) -> None:
         super().__init__(exp_cfgs)
 
-    def train(self, model_path, train_path, valid_path, output_path):
+    def train(self, model_path, train_path, valid_path, output_path, trial : optuna.trial.Trial = None):
         
+        if trial:
+            self.exp_cfgs.model_args.edit('num_train_epochs',trial.suggest_int('num_train_epochs', 15, 40))
+            self.exp_cfgs.model_args.edit('learning_rate',trial.suggest_float('lr', 1e-7, 1e-4))
+            self.exp_cfgs.model_args.edit('weight_decay',trial.suggest_float('re_weight_decay', 0.0, 0.1))
+            self.exp_cfgs.model_args.edit('droput',trial.suggest_float('droput', 0.0, 0.5))
+            self.exp_cfgs.model_args.edit('lr_scheduler',trial.suggest_categorical('lr_scheduler', ['linear', 'constant_w_warmup', 'inverse_square_root']))
+            self.exp_cfgs.model_args.edit('warmup_steps',trial.suggest_int('warmup_steps', 0, 1000))
+            self.exp_cfgs.model_args.edit('train_batch_size',trial.suggest_int('batch_size', 2, 4, step=2))
+            
         self.exp_cfgs.model_args.edit('do_train',True) 
         self.exp_cfgs.model_args.edit('do_eval',True) 
         self.exp_cfgs.model_args.edit('do_predict',False) 
@@ -38,9 +47,9 @@ class RebelWrapper(ModelWrapper):
             with open(dataset_path,'w') as out_file:
                json.dump(data,out_file)
         
-        call_rebel(self.exp_cfgs.model_args)
+        eval_micro_f1  = call_rebel(self.exp_cfgs.model_args, trial=trial)
 
-        return True
+        return eval_micro_f1
 
     def eval(self, model_path, dataset_path, output_path, data_label='test', save_embeddings = False,  Temp_rel = 1.0, Temp_ent = 1.0):
 
