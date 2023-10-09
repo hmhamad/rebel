@@ -398,7 +398,8 @@ class BasePLModule(pl.LightningModule):
             elif self.hparams.dataset_name.split('/')[-1] == 'fire_typed.py':
                 fire_mapping = {'ValueChangeDecreaseby': 'value decreased by', 'Valuein': 'value in date', 'Value': 'value', 'ValueChangeIncreaseby': 'value increased by', 'Locatedin': 'location',
                            'ActionSell': 'sell', 'Quantity': 'quantity', 'ActionBuy': 'buy', 'Productof': 'product of', 'Employeeof': 'employer',
-                           'Sector': 'sector', 'Subsidiaryof': 'parent', 'Designation': 'designation', 'Actionin': 'action in date', 'Propertyof': 'property of'}
+                           'Sector': 'sector', 'Subsidiaryof': 'parent', 'Designation': 'designation', 'Actionin': 'action in date', 'Propertyof': 'property of',
+                           'ActionMerge': 'merge', 'Constituentof': 'part of', 'Action to' : 'action to'}
                 fire_mapping_values = list(fire_mapping.values())
                 scores_boundaries, precision_boundaries, recall_boundaries, f1_boundaries = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], fire_mapping_values, "boundaries")
                 scores_strict, precision_strict, recall_strict, f1_strict = re_score([item for pred in output for item in pred['predictions']], [item for pred in output for item in pred['labels']], fire_mapping_values, "strict")

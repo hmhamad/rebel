@@ -16,9 +16,9 @@ class RebelWrapper(ModelWrapper):
     def __init__(self, exp_cfgs) -> None:
         super().__init__(exp_cfgs)
 
-    def train(self, model_path, train_path, valid_path, output_path, trial : optuna.trial.Trial = None):
+    def train(self, model_path, train_path, valid_path, output_path, trial : optuna.trial.Trial = None, curriculum_learning = False, ner_train_path = False):
         
-        if trial:
+        if trial and not curriculum_learning:
             self.exp_cfgs.model_args.edit('num_train_epochs',trial.suggest_int('num_train_epochs', 15, 40))
             self.exp_cfgs.model_args.edit('learning_rate',trial.suggest_float('lr', 1e-7, 1e-4))
             self.exp_cfgs.model_args.edit('weight_decay',trial.suggest_float('re_weight_decay', 0.0, 0.1))
