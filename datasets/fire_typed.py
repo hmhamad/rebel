@@ -40,7 +40,7 @@ _URLS = {
 mapping = {'ValueChangeDecreaseby': 'value decreased by', 'Valuein': 'value in date', 'Value': 'value', 'ValueChangeIncreaseby': 'value increased by', 'Locatedin': 'location',
                            'ActionSell': 'sell', 'Quantity': 'quantity', 'ActionBuy': 'buy', 'Productof': 'product of', 'Employeeof': 'employer',
                            'Sector': 'sector', 'Subsidiaryof': 'parent', 'Designation': 'designation', 'Actionin': 'action in date', 'Propertyof': 'property of',
-                           'ActionMerge': 'merge', 'Constituentof': 'part of', 'Action to' : 'action to'}
+                           'ActionMerge': 'merge', 'Constituentof': 'part of', 'Actionto' : 'action to'}
 mapping_types = {'Company': '<comp>', 'FinancialEntity': '<finent>', 'Quantity': '<quant>', 'Date': '<date>', 'Money': '<money>', 'Location': '<loc>', 'Action': '<action>', 'GeopoliticalEntity': '<geoent>',
                  'Product': '<product>','Designation': '<desig>','Sector': '<sector>','Person': '<per>','BusinessUnit': '<bus>'}
 
