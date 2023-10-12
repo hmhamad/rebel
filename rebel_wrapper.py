@@ -16,15 +16,15 @@ class RebelWrapper(ModelWrapper):
     def __init__(self, exp_cfgs) -> None:
         super().__init__(exp_cfgs)
 
-    def train(self, model_path, train_path, valid_path, output_path, trial : optuna.trial.Trial = None, curriculum_learning = False, ner_train_path = False):
+    def train(self, model_path, train_path, valid_path, output_path, trial : optuna.trial.Trial = None, curriculum_learning = False, train_ner = True, ner_train_path = None):
         
         if trial and not curriculum_learning:
-            self.exp_cfgs.model_args.edit('num_train_epochs',trial.suggest_int('num_train_epochs', 15, 40))
-            self.exp_cfgs.model_args.edit('learning_rate',trial.suggest_float('lr', 1e-7, 1e-4))
+            self.exp_cfgs.model_args.edit('num_train_epochs',trial.suggest_int('num_train_epochs', 15, 40, step=5))
+            self.exp_cfgs.model_args.edit('learning_rate',trial.suggest_categorical('lr', [5e-6, 7e-6, 1e-5, 3e-5, 5e-5, 7e-5]))
             self.exp_cfgs.model_args.edit('weight_decay',trial.suggest_float('re_weight_decay', 0.0, 0.1))
             self.exp_cfgs.model_args.edit('droput',trial.suggest_float('droput', 0.0, 0.5))
             self.exp_cfgs.model_args.edit('lr_scheduler',trial.suggest_categorical('lr_scheduler', ['linear', 'constant_w_warmup', 'inverse_square_root']))
-            self.exp_cfgs.model_args.edit('warmup_steps',trial.suggest_int('warmup_steps', 0, 1000))
+            self.exp_cfgs.model_args.edit('warmup_steps',trial.suggest_int('warmup_steps', 0, 1000, step=100))
             self.exp_cfgs.model_args.edit('train_batch_size',trial.suggest_int('batch_size', 2, 4, step=2))
             
         self.exp_cfgs.model_args.edit('do_train',True) 
