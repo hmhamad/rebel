@@ -51,7 +51,7 @@ class RebelWrapper(ModelWrapper):
 
         return eval_micro_f1
 
-    def eval(self, model_path, dataset_path, output_path, data_label='test', save_embeddings = False,  Temp_rel = 1.0, Temp_ent = 1.0):
+    def eval(self, model_path, dataset_path, output_path, data_label='test', save_embeddings = False,  Temp_rel = 1.0, Temp_ent = 1.0, ner_model_path = None):
 
         self.exp_cfgs.model_args.edit('do_train',False) 
         self.exp_cfgs.model_args.edit('do_eval',True) 
